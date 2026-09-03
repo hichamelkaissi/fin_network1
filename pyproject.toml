@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fin_network"
+description = "Systemic risk pipeline: reconstruction, graphon estimation/sampling, EN clearing, and network statistics."
+version = "0.1.0"
+readme = "README.md"
+authors = [
+    { name = "Hicham El Kaissi" },
+    { email = "thekaissihicham@gmail.com" }
+]
+
+keywords = ["systemic-risk", "graphon", "eisenberg-noe", "jax", "financial-networks"]
+
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "tqdm>=4.66",
+    "typer>=0.9",
+    "tomli; python_version<'3.11'",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "app*",
+    "graphon*",
+    "reconstruction*",
+    "EN_mechanism*",
+    "stats*",
+    "common*",
+    "clearing_game*"
+]
