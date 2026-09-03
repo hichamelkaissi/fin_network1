@@ -1,0 +1,24 @@
+[paths]
+network_root = '/home/he266/research/data/processed/networks'
+logroot = '/home/he266/research/logs/runtime'
+ffiec_root = '/home/he266/research/data/raw/ffiec_csv'
+net_stats_root = '/home/he266/research/results/tables/net_stats//deter'
+en_stats_root = '/home/he266/research/results/tables/en_stats/graphon/deter'
+game_stats_root = '/home/he266/research/results/tables/game_stats/graphon/deter'
+
+[kappas]
+kappa_grid = [0.6, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 50.0, 1e8]
+
+[stats]
+comparison_keys = [
+    'default_rate',
+    'shortfall_frac',
+    'amplification',
+    'cascade_rounds',
+    'endogenous_default_share',
+    'peak_new_defaults',
+    'top10_loss_share',
+    'gini_creditor_loss',
+    'avg_tau_default',
+    'spectralM'
+]
