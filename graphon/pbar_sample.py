@@ -18,8 +18,8 @@ from .graphon import (
 # ============================================================
 
 def _safe_quantile(x: Array, q: float, default: float = 0.0) -> Array:
-    x = jnp.asarray(x)
-    return jnp.where(x.size > 0, jnp.quantile(x, q), default)
+    x = jnp.asarray(x) #remove this line
+    return jnp.where(x.size > 0, jnp.quantile(x, q), default) #BUG: use if statement
 
 def _winsorize_log1p(y_log1p: Array, lo: Array, hi: Array) -> Array:
     return jnp.clip(y_log1p, lo, hi)
@@ -30,6 +30,7 @@ def _bin_ids_from_t(t: Array, n_bins: int) -> Array:
     return jnp.clip(b, 0, n_bins - 1)
 
 def _prepare_bin_pools(values: Array, bin_id: Array, n_bins: int) -> Tuple[Array, Array, Array]:
+    #remove values for args!
     perm = jnp.argsort(bin_id)
     bin_sorted = bin_id[perm]
     counts = jnp.bincount(bin_sorted, length=n_bins)
@@ -56,6 +57,7 @@ def _sample_from_bin_pool(
     picked_idx = perm[pick_pos]
     drawn = values[picked_idx]
 
+    #needs a local fallback!
     fbN = fallback_values.shape[0]
     fb_idx = random.randint(sub2, shape=(N_new,), minval=0, maxval=jnp.maximum(fbN, 1))
     fb_draw = fallback_values[fb_idx]
