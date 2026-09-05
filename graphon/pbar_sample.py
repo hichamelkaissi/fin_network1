@@ -93,6 +93,7 @@ def _log_affine_calibrate(
         )
     return a, b
 
+#Replace this with MLE!
 def _fit_gpd_moments(excess: Array, eps: float = 1e-12) -> Tuple[Array, Array]:
     m = jnp.mean(excess)
     v = jnp.var(excess)
@@ -128,7 +129,7 @@ def fit_size_function_hurdle(
         ridge_alpha: float = 1e-3,
         penalty_order: int = 2,
         eps: float = 1e-12,
-        resid_winsor_q: float = 0.999,
+        resid_winsor_q: float = 0.999, #too high?
         n_bins: int = 30,
         k_tail: int = 40,
         min_tail_n: int = 20,
@@ -136,12 +137,13 @@ def fit_size_function_hurdle(
         tail_prob_a: float = 0.5,
         tail_prob_b: float = 200.0,
 ) -> Dict:
+    #asarray not needed in the next two lines
     pbar = jnp.asarray(pbar)
     t_l = jnp.asarray(t_l)
 
     y = jnp.log1p(jnp.maximum(pbar, eps))
 
-    knots_l, _ = make_spline_knots(t_l, t_l, K=K, degree=degree)
+    knots_l, _ = make_spline_knots(t_l, t_l, K=K, degree=degree) 
     B = spline_design_matrix(t_l, knots_l, degree=degree)
     Omega = spline_penalty_matrix(B.shape[1], order=penalty_order)
 
@@ -154,6 +156,7 @@ def fit_size_function_hurdle(
     resid_w = jnp.clip(resid, r_lo, r_hi)
 
     y_pos = y[pbar > 0.0]
+    #Use if statement instead of jnp.where!
     y_hi = jnp.where(y_pos.size > 0, jnp.max(y_pos), jnp.max(y))
     y_lo = jnp.where(y_pos.size > 0, jnp.min(y_pos), jnp.min(y))
 
@@ -162,7 +165,7 @@ def fit_size_function_hurdle(
     is_zero = (pbar == 0.0).astype(jnp.float32)
     counts = jnp.bincount(bin_id, length=n_bins).astype(jnp.float32)
     zeros = jnp.bincount(bin_id, weights=is_zero, length=n_bins)
-    pi0_bin = zeros / jnp.maximum(counts, 1.0)
+    pi0_bin = zeros / jnp.maximum(counts, 1.0) #!!
 
     mask_pos = (pbar > 0.0)
     resid_pos = resid_w[mask_pos]
@@ -171,7 +174,7 @@ def fit_size_function_hurdle(
 
     N_pos = y_pos.shape[0]
     qu = 1.0 - (k_tail / jnp.maximum(N_pos, 1))
-    qu = jnp.clip(qu, 0.9, 0.999)
+    qu = jnp.clip(qu, 0.9, 0.999) #!!! upper end too high!?!
     u_thr = jnp.quantile(y_pos, qu) if N_pos > 0 else jnp.array(0.0)
     excess = (y_pos - u_thr)
     excess = excess[excess > 0.0]
@@ -179,7 +182,7 @@ def fit_size_function_hurdle(
     xi, beta = lax.cond(
         excess.size >= min_tail_n,
         lambda _: _fit_gpd_moments(excess, eps=eps),
-        lambda _: (jnp.array(0.1), jnp.array(0.1)),
+        lambda _: (jnp.array(0.1), jnp.array(0.1)), #would be questionable with MLE
         operand=None,
         )
     tail = {
@@ -195,7 +198,7 @@ def fit_size_function_hurdle(
     if fit_tail_prob:
         is_tail = (y > u_thr).astype(jnp.float32)
         tail_counts = jnp.bincount(bin_id, weights=is_tail, length=n_bins).astype(jnp.float32)
-        p_tail_bin = (tail_counts + tail_prob_a) / (counts + tail_prob_a + tail_prob_b)
+        p_tail_bin = (tail_counts + tail_prob_a) / (counts + tail_prob_a + tail_prob_b) #shrinkage is too agressive
     else:
         p_tail_bin = jnp.zeros((n_bins,), dtype=jnp.float32)
 
