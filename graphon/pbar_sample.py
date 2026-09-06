@@ -262,8 +262,8 @@ def sample_pbar_hurdle(
         scale_cap: float = 5.0,
         eps: float = 1e-12,
 ) -> Tuple[Array, Array, Array]:
-    t_new = jnp.asarray(t_new)
-    pbar_obs = jnp.asarray(pbar_obs)
+    t_new = jnp.asarray(t_new) #remove casting
+    pbar_obs = jnp.asarray(pbar_obs) #remove casting
 
     mu_y = predict_log1p_pbar(size_model, t_new)
     N = mu_y.shape[0]
@@ -285,7 +285,7 @@ def sample_pbar_hurdle(
         fallback_values=size_model['resid_global'],
     )
 
-    y_body = mu_y + noise_scale * resid_draw
+    y_body = mu_y + noise_scale * resid_draw  #noise_scale not the only control - it is one of many
     y_body = jnp.where(active, y_body, 0.0)
 
     if calibrate_log_affine:
@@ -318,7 +318,7 @@ def sample_pbar_hurdle(
         beta = tail['beta']
 
         if evt_mode == 'guardrail':
-            if use_evt_guardrail:
+            if use_evt_guardrail: #we do not need this arg
                 y_max_obs = jnp.max(jnp.log1p(jnp.maximum(pbar_pos_obs, eps)))
 
                 in_tail = active & (y_body > u_thr)
@@ -369,7 +369,7 @@ def sample_pbar_hurdle(
     pbar_new = jnp.where(active, jnp.expm1(jnp.maximum(y_new, 0.0)), 0.0)
     pbar_new = jnp.maximum(pbar_new, 0.0)
 
-    if enforce_pos_sum and (pbar_pos_obs.size > 0):
+    if enforce_pos_sum and (pbar_pos_obs.size > 0): #this hinders EVT
         target = jnp.sum(pbar_pos_obs)
         current = jnp.sum(pbar_new[pbar_new > 0.0])
         scale = target / jnp.maximum(current, eps)
