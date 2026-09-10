@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, TypedDict
 
 import jax
 import jax.numpy as jnp
@@ -18,8 +18,10 @@ from .graphon import (
 # ============================================================
 
 def _safe_quantile(x: Array, q: float, default: float = 0.0) -> Array:
-    x = jnp.asarray(x) #remove this line
-    return jnp.where(x.size > 0, jnp.quantile(x, q), default) #BUG: use if statement
+    if x.size > 0:
+        return jnp.quantile(x, q)
+    else:
+        return default
 
 def _winsorize_log1p(y_log1p: Array, lo: Array, hi: Array) -> Array:
     return jnp.clip(y_log1p, lo, hi)
@@ -92,7 +94,135 @@ def _log_affine_calibrate(
         operand=None,
         )
     return a, b
+#---------------------
+# MLE
+#----------------------
+class GPDResult(TypedDict):
+    u: float
+    q: float
+    Nu: int
+    xi: float
+    beta: float
+    loglik: float
+    xi_ci: tuple[float, float]
+    beta_ci: tuple[float, float]
+    success: bool
 
+def _gpd_loglikelihood(
+    params: Array,
+    excess: Array
+    ) -> Array:
+    xi = params[0]
+    beta = jnp.exp(params[1])
+    nu = excess.shape[0]
+    z = 1 + xi * excess / beta
+    ll_general = (
+        -nu * jnp.log(beta)
+        - (1.0 + 1.0 / xi)
+        * jnp.sum(jnp.log(z))
+    )
+    ll_exp = (
+        -nu * jnp.log(beta)
+        - jnp.sum(excess) / beta
+    )
+    ll = lax.cond(
+        jnp.abs(xi) < 1e-6,
+        lambda _: ll_exp,
+        lambda _: ll_general,
+        operand=None
+    )
+    valid = jnp.all(z > 0)
+    ll = lax.cond(
+        valid,
+        lambda _: ll,
+        lambda _: -jnp.inf,
+        operand=None
+    )
+    return -ll
+def gpd_MLE(
+    pbar: Array,
+    q: float = 0.95,
+    ) -> GPDResult:
+  
+    pos_pbar = pbar[pbar > 0.0]
+
+
+    u = jnp.quantile(
+        pos_pbar,
+        q,
+    )
+
+    mask = pos_pbar > u
+    excess = (
+        pos_pbar[mask]
+        - u
+    )
+    Nu = excess.shape[0]
+    xi0 = 0.1
+    beta0 = jnp.mean(excess)
+    log_beta0 = jnp.log(beta0)
+    x0 = jnp.asarray([
+        xi0,
+        log_beta0,
+    ])
+    res = minimize(
+        _gpd_loglikelihood,
+        x0,
+        args=(excess,),
+        method="BFGS",
+    )
+    xi_hat = res.x[0]
+    beta_hat = jnp.exp(
+        res.x[1]
+    )
+    success = bool(
+        res.success
+    )
+    loglik = -res.fun
+    z = 1.96
+    cov_theta = res.hess_inv
+    se_xi = jnp.sqrt(
+        cov_theta[0, 0]
+    )
+    se_log_beta = jnp.sqrt(
+        cov_theta[1, 1]
+    )
+    xi_ci = (
+        float(xi_hat - z * se_xi),
+        float(xi_hat + z * se_xi),
+    )
+    log_beta_hat = jnp.log(
+        beta_hat
+    )
+    beta_ci = (
+        float(
+            jnp.exp(
+                log_beta_hat
+                - z * se_log_beta
+            )
+        ),
+
+        float(
+            jnp.exp(
+                log_beta_hat
+                + z * se_log_beta
+            )
+        ),
+    )
+    return {
+        "u": float(u),
+        "q": float(q),
+        "Nu": int(Nu),
+        "xi": float(xi_hat),
+        "beta": float(beta_hat),
+        "loglik": float(loglik),
+        "xi_ci": xi_ci,
+        "beta_ci": beta_ci,
+        "success": success,
+    }
+#---------------------
+# End of MLE
+#----------------------
 #Replace this with MLE!
 def _fit_gpd_moments(excess: Array, eps: float = 1e-12) -> Tuple[Array, Array]:
     m = jnp.mean(excess)
