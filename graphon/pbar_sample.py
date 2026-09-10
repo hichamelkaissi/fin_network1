@@ -236,6 +236,7 @@ def _fit_gpd_moments(excess: Array, eps: float = 1e-12) -> Tuple[Array, Array]:
     return xi, beta
 
 def _sample_gpd_excess(key: Array, xi: Array, beta: Array, shape) -> Tuple[Array, Array]:
+    #typing: xi, beta will need to be float!
     key, sub = random.split(key)
     U = random.uniform(sub, shape=shape, minval=1e-12, maxval=1.0 - 1e-12)
 
