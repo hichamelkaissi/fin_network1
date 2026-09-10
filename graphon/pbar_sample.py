@@ -220,6 +220,34 @@ def gpd_MLE(
         "beta_ci": beta_ci,
         "success": success,
     }
+
+def gpd_hill_estimator(
+    pbar: Array,
+    k: int,
+) -> Array:
+
+    pos_pbar = pbar[pbar > 0.0]
+
+    x = jnp.sort(
+        pos_pbar,
+        descending=True,
+    )
+
+    threshold = x[k - 1]
+
+    j = jnp.arange(x.shape[0])
+
+    mask = j < (k - 1)
+
+    logs = jnp.where(
+        mask,
+        jnp.log(x / threshold),
+        0.0,
+    )
+
+    xi_hill = jnp.sum(logs) / (k - 1)
+
+    return xi_hill
 #---------------------
 # End of MLE
 #----------------------
