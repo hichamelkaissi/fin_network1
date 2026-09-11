@@ -141,17 +141,18 @@ def _gpd_loglikelihood(
     return -ll
 def gpd_MLE(
     pbar: Array,
+    u: Array | None = None,
     q: float = 0.95,
     ) -> GPDResult:
-  
+
     pos_pbar = pbar[pbar > 0.0]
 
 
-    u = jnp.quantile(
+    uq = jnp.quantile(
         pos_pbar,
         q,
     )
-
+    u = u if u is not None else uq
     mask = pos_pbar > u
     excess = (
         pos_pbar[mask]
@@ -220,7 +221,6 @@ def gpd_MLE(
         "beta_ci": beta_ci,
         "success": success,
     }
-
 def gpd_hill_estimator(
     pbar: Array,
     k: int,
